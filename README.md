@@ -17,7 +17,7 @@ Typical use case: unlocking a small door latch, opening a lock, or activating a 
 ## 🔌 Wiring
 | Component    | ESP32-CAM Pin |
 |--------------|---------------|
-| Servo Signal | GPIO2         |
+| Servo Signal | GPIO4         |
 | Servo VCC    | 5V (external supply recommended) |
 | Servo GND    | GND (shared with ESP32-CAM)      |
 
