@@ -6,7 +6,7 @@
 #include "camera_pins.h"
 
 // ===== Servo Motor =====
-#define SERVO_PIN 2    // Using GPIO2 for the servo
+#define SERVO_PIN 4    // Using GPIO2 for the servo
 Servo myServo;
 
 const char* ssid     = "-----------"; // WiFi SSID
