@@ -1,38 +1,34 @@
 #include "esp_camera.h"
 #include <WiFi.h>
+#include <Servo.h>   // Servo library
 
-// ===== Camera model =====
 #define CAMERA_MODEL_AI_THINKER
 #include "camera_pins.h"
 
-// ===== Relay config =====
-#define Relay 33            // Use GPIO33 for relay IN
-// Most relay modules are Active-LOW (IN=LOW -> ON)
-// If your relay is Active-HIGH, swap RELAY_ON / RELAY_OFF.
-#define RELAY_ON  LOW
-#define RELAY_OFF HIGH
+// ===== Servo Motor =====
+#define SERVO_PIN 2    // Using GPIO2 for the servo
+Servo myServo;
 
-// ===== Wi-Fi =====
 const char* ssid     = "-----------"; // WiFi SSID
 const char* password = "----------";  // WiFi Password
 
 void startCameraServer();
 
-// Set to true from app_httpd.cpp when a face is recognized
-volatile bool matchFace = false;
-bool activateRelay = false;
+// This variable is changed to true from app_httpd.cpp when a face is recognized
+volatile boolean matchFace = false;
+boolean activateServo = false;
 unsigned long prevMillis = 0;
-const unsigned long interval = 5000UL; // Relay ON duration (ms)
+const unsigned long interval = 5000UL; // Time the servo stays open (ms)
 
 void setup() {
-  pinMode(Relay, OUTPUT);
-  digitalWrite(Relay, RELAY_OFF); // relay off by default
+  myServo.attach(SERVO_PIN);
+  myServo.write(0);   // Default position (closed)
 
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   Serial.println();
 
-  // ===== Camera config =====
+  // Camera configuration
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
   config.ledc_timer   = LEDC_TIMER_0;
@@ -65,23 +61,22 @@ void setup() {
     config.fb_count     = 1;
   }
 
-  // Initialize camera
+  // Initialize the camera
   esp_err_t err = esp_camera_init(&config);
   if (err != ESP_OK) {
     Serial.printf("Camera init failed with error 0x%x\n", err);
     while (true) delay(1000);
   }
 
-  // Adjust sensor settings
-  sensor_t* s = esp_camera_sensor_get();
+  sensor_t * s = esp_camera_sensor_get();
   if (s->id.PID == OV3660_PID) {
     s->set_vflip(s, 1);
     s->set_brightness(s, 1);
     s->set_saturation(s, -2);
   }
-  s->set_framesize(s, FRAMESIZE_QVGA); // faster FPS
+  s->set_framesize(s, FRAMESIZE_QVGA);
 
-  // Wi-Fi connection
+  // WiFi connection
   WiFi.begin(ssid, password);
   Serial.print("Connecting to WiFi");
   while (WiFi.status() != WL_CONNECTED) {
@@ -99,17 +94,17 @@ void setup() {
 }
 
 void loop() {
-  // On face match, turn relay ON for 'interval' ms
-  if (matchFace && !activateRelay) {
-    activateRelay = true;
-    digitalWrite(Relay, RELAY_ON);
+  // If a face is matched and servo is not active
+  if (matchFace && !activateServo) {
+    activateServo = true;
+    myServo.write(90);   // Open servo (90°)
     prevMillis = millis();
   }
 
-  // After timeout, turn relay OFF and reset flags
-  if (activateRelay && (millis() - prevMillis > interval)) {
-    activateRelay = false;
+  // After the interval, return servo to default position
+  if (activateServo && (millis() - prevMillis > interval)) {
+    activateServo = false;
     matchFace = false;
-    digitalWrite(Relay, RELAY_OFF);
+    myServo.write(0);    // Close servo (0°)
   }
 }
